@@ -314,9 +314,8 @@ impl<'de> Deserialize<'de> for PublicKey {
                 debug_assert!(constants::UNCOMPRESSED_PUBLIC_KEY_SIZE >= constants::COMPRESSED_PUBLIC_KEY_SIZE);
 
                 let s = Secp256k1::with_caps(crate::ContextFlag::None);
-                unsafe {
-                    use std::mem;
-                    let mut ret: [u8; constants::UNCOMPRESSED_PUBLIC_KEY_SIZE] = mem::MaybeUninit::uninit().assume_init();
+               
+                    let mut ret: [u8; constants::UNCOMPRESSED_PUBLIC_KEY_SIZE] = [0; constants::UNCOMPRESSED_PUBLIC_KEY_SIZE];
 
                     let mut read_len = 0;
                     while read_len < constants::UNCOMPRESSED_PUBLIC_KEY_SIZE {
@@ -342,7 +341,7 @@ impl<'de> Deserialize<'de> for PublicKey {
                                 ),
                         _ => Err(de::Error::invalid_length(read_len, &self)),
                     }
-                }
+               
             }
 
             fn expecting(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
@@ -373,7 +372,7 @@ mod test {
     use super::{PublicKey, SecretKey};
     use super::super::constants;
 
-    use rand::{Error, RngCore, thread_rng};
+    use rand::{RngCore, rng};
     use self::rand_core::impls;
 
     use std::slice::from_raw_parts;
@@ -436,7 +435,7 @@ mod test {
     fn keypair_slice_round_trip() {
         let s = Secp256k1::new();
 
-        let (sk1, pk1) = s.generate_keypair(&mut thread_rng()).unwrap();
+        let (sk1, pk1) = s.generate_keypair(&mut rng()).unwrap();
         assert_eq!(SecretKey::from_slice(&s, &sk1[..]), Ok(sk1));
         assert_eq!(PublicKey::from_slice(&s, &pk1.serialize_vec(&s, true)[..]), Ok(pk1));
         assert_eq!(PublicKey::from_slice(&s, &pk1.serialize_vec(&s, false)[..]), Ok(pk1));
@@ -466,7 +465,7 @@ mod test {
     #[test]
     fn test_pubkey_from_slice_bad_context() {
         let s = Secp256k1::without_caps();
-        let sk = SecretKey::new(&s, &mut thread_rng());
+        let sk = SecretKey::new(&s, &mut rng());
         assert_eq!(PublicKey::from_secret_key(&s, &sk), Err(IncapableContext));
 
         let s = Secp256k1::with_caps(ContextFlag::VerifyOnly);
@@ -482,7 +481,7 @@ mod test {
     #[test]
     fn test_add_exp_bad_context() {
         let s = Secp256k1::with_caps(ContextFlag::Full);
-        let (sk, mut pk) = s.generate_keypair(&mut thread_rng()).unwrap();
+        let (sk, mut pk) = s.generate_keypair(&mut rng()).unwrap();
 
         assert!(pk.add_exp_assign(&s, &sk).is_ok());
 
@@ -555,7 +554,7 @@ mod test {
     fn test_serialize_serde() {
         let s = Secp256k1::new();
         for _ in 0..500 {
-            let (sk, pk) = s.generate_keypair(&mut thread_rng()).unwrap();
+            let (sk, pk) = s.generate_keypair(&mut rng()).unwrap();
             round_trip_serde!(sk);
             round_trip_serde!(pk);
         }
@@ -582,9 +581,9 @@ mod test {
                 data[31] = self.0;
                 self.0 -= 1;
             }
-            fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
+            /*fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
                 Ok(self.fill_bytes(dest))
-            }
+            }*/
         }
 
         let s = Secp256k1::new();
@@ -625,7 +624,7 @@ mod test {
             fn fill_bytes(&mut self, dest: &mut [u8]) { 
                 impls::fill_bytes_via_next(self, dest)
             }
-            fn try_fill_bytes(&mut self, _dest: &mut [u8]) -> Result<(), Error> { unimplemented!() }
+            //fn try_fill_bytes(&mut self, _dest: &mut [u8]) -> Result<(), Error> { unimplemented!() }
         }
 
         let s = Secp256k1::new();
@@ -649,7 +648,7 @@ mod test {
             fn fill_bytes(&mut self, dest: &mut [u8]) { 
                 impls::fill_bytes_via_next(self, dest)
             }
-            fn try_fill_bytes(&mut self, _dest: &mut [u8]) -> Result<(), Error> { unimplemented!() }
+            //fn try_fill_bytes(&mut self, _dest: &mut [u8]) -> Result<(), Error> { unimplemented!() }
         }
 
         let s = Secp256k1::new();
@@ -664,8 +663,8 @@ mod test {
     fn test_addition() {
         let s = Secp256k1::new();
 
-        let (mut sk1, mut pk1) = s.generate_keypair(&mut thread_rng()).unwrap();
-        let (mut sk2, mut pk2) = s.generate_keypair(&mut thread_rng()).unwrap();
+        let (mut sk1, mut pk1) = s.generate_keypair(&mut rng()).unwrap();
+        let (mut sk2, mut pk2) = s.generate_keypair(&mut rng()).unwrap();
 
         assert_eq!(PublicKey::from_secret_key(&s, &sk1).unwrap(), pk1);
         assert!(sk1.add_assign(&s, &sk2).is_ok());
@@ -682,8 +681,8 @@ mod test {
     fn test_multiplication() {
         let s = Secp256k1::new();
 
-        let (mut sk1, mut pk1) = s.generate_keypair(&mut thread_rng()).unwrap();
-        let (mut sk2, mut pk2) = s.generate_keypair(&mut thread_rng()).unwrap();
+        let (mut sk1, mut pk1) = s.generate_keypair(&mut rng()).unwrap();
+        let (mut sk2, mut pk2) = s.generate_keypair(&mut rng()).unwrap();
 
         assert_eq!(PublicKey::from_secret_key(&s, &sk1).unwrap(), pk1);
         assert!(sk1.mul_assign(&s, &sk2).is_ok());
@@ -700,8 +699,8 @@ mod test {
     fn test_pk_combination() {
         let s = Secp256k1::new();
 
-        let (sk1, mut pk1) = s.generate_keypair(&mut thread_rng()).unwrap();
-        let (sk2, mut pk2) = s.generate_keypair(&mut thread_rng()).unwrap();
+        let (sk1, mut pk1) = s.generate_keypair(&mut rng()).unwrap();
+        let (sk2, mut pk2) = s.generate_keypair(&mut rng()).unwrap();
 
         let combined_pk = PublicKey::from_combination(&s, vec![&pk1,&pk2]).unwrap();
 
@@ -725,13 +724,13 @@ mod test {
         one_inv.inv_assign(&s).unwrap();
         assert_eq!(one_inv, one);
 
-        let (sk1, _) = s.generate_keypair(&mut thread_rng()).unwrap();
+        let (sk1, _) = s.generate_keypair(&mut rng()).unwrap();
         let mut sk2: SecretKey = sk1.clone();
         sk2.inv_assign(&s).unwrap();
         sk2.inv_assign(&s).unwrap();
         assert_eq!(sk2, sk1);
 
-        let (sk1, _) = s.generate_keypair(&mut thread_rng()).unwrap();
+        let (sk1, _) = s.generate_keypair(&mut rng()).unwrap();
         let mut sk2: SecretKey = sk1.clone();
         sk2.inv_assign(&s).unwrap();
         sk2.mul_assign(&s, &sk1).unwrap();
@@ -742,18 +741,18 @@ mod test {
     fn test_negate() {
         let s = Secp256k1::new();
 
-        let (sk1, _) = s.generate_keypair(&mut thread_rng()).unwrap();
+        let (sk1, _) = s.generate_keypair(&mut rng()).unwrap();
         let mut sk2: SecretKey = sk1.clone();
         sk2.neg_assign(&s).unwrap();
         assert!(sk2.add_assign(&s, &sk1).is_err());
 
-        let (sk1, _) = s.generate_keypair(&mut thread_rng()).unwrap();
+        let (sk1, _) = s.generate_keypair(&mut rng()).unwrap();
         let mut sk2: SecretKey = sk1.clone();
         sk2.neg_assign(&s).unwrap();
         sk2.neg_assign(&s).unwrap();
         assert_eq!(sk2, sk1);
 
-        let (mut sk1, _) = s.generate_keypair(&mut thread_rng()).unwrap();
+        let (mut sk1, _) = s.generate_keypair(&mut rng()).unwrap();
         let mut sk2: SecretKey = sk1.clone();
         sk1.neg_assign(&s).unwrap();
         let sk1_clone = sk1.clone();
@@ -769,14 +768,14 @@ mod test {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01]).unwrap();
 
-        let (mut sk1, _) = s.generate_keypair(&mut thread_rng()).unwrap();
+        let (mut sk1, _) = s.generate_keypair(&mut rng()).unwrap();
         let mut sk2: SecretKey = one.clone();
         sk2.neg_assign(&s).unwrap();
         sk2.mul_assign(&s, &sk1).unwrap();
         sk1.neg_assign(&s).unwrap();
         assert_eq!(sk2, sk1);
 
-        let (mut sk1, _) = s.generate_keypair(&mut thread_rng()).unwrap();
+        let (mut sk1, _) = s.generate_keypair(&mut rng()).unwrap();
         let mut sk2: SecretKey = sk1.clone();
         sk1.neg_assign(&s).unwrap();
         sk1.inv_assign(&s).unwrap();
@@ -801,7 +800,7 @@ mod test {
         let mut set = HashSet::new();
         const COUNT : usize = 1024;
         let count = (0..COUNT).map(|_| {
-            let (_, pk) = s.generate_keypair(&mut thread_rng()).unwrap();
+            let (_, pk) = s.generate_keypair(&mut rng()).unwrap();
             let hash = hash(&pk);
             assert!(!set.contains(&hash));
             set.insert(hash);

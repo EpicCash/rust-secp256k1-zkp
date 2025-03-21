@@ -16,7 +16,7 @@
 use libc::size_t;
 use crate::ffi;
 use crate::key::{PublicKey, SecretKey};
-use rand::{thread_rng, Rng};
+use rand::{rng, Rng};
 use std::ptr;
 use crate::Secp256k1;
 use crate::{AggSigPartialSignature, Error, Message, Signature};
@@ -34,9 +34,9 @@ pub const ZERO_256: [u8; 32] = [
 /// msg: the message to sign
 /// seckey: the secret key
 pub fn export_secnonce_single(secp: &Secp256k1) -> Result<SecretKey, Error> {
-	let mut return_key = SecretKey::new(&secp, &mut thread_rng());
+	let mut return_key = SecretKey::new(&secp, &mut rng());
 	let mut seed = [0u8; 32];
-	thread_rng().fill(&mut seed);
+	rng().fill(&mut seed);
 	let retval = unsafe {
 		ffi::secp256k1_aggsig_export_secnonce_single(
 			secp.ctx,
@@ -97,7 +97,7 @@ pub fn sign_single(
 ) -> Result<Signature, Error> {
 	let mut retsig = Signature::from(ffi::Signature::new());
 	let mut seed = [0u8; 32];
-	thread_rng().fill(&mut seed);
+	rng().fill(&mut seed);
 
 	let secnonce = match secnonce {
 		Some(n) => n.as_ptr(),
@@ -302,7 +302,7 @@ impl AggSigContext {
 	/// Creates new aggsig context with a new random seed
 	pub fn new(secp: &Secp256k1, pubkeys: &Vec<PublicKey>) -> AggSigContext {
 		let mut seed = [0u8; 32];
-		thread_rng().fill(&mut seed);
+		rng().fill(&mut seed);
 		let pubkeys: Vec<*const ffi::PublicKey> = pubkeys.into_iter().map(|p| p.as_ptr()).collect();
 		let pubkeys = &pubkeys[..];
 		unsafe {
@@ -431,7 +431,7 @@ mod tests {
 	use crate::aggsig::subtract_partial_signature;
 use crate::ffi;
 	use crate::key::{PublicKey, SecretKey};
-	use rand::{thread_rng, Rng};
+	use rand::{rng, Rng};
 	use crate::ContextFlag;
 	use crate::{AggSigPartialSignature, Message, Signature};
 
@@ -441,7 +441,7 @@ use crate::ffi;
 		let secp = Secp256k1::with_caps(ContextFlag::Full);
 		let mut keypairs: Vec<(SecretKey, PublicKey)> = vec![];
 		for _ in 0..numkeys {
-			keypairs.push(secp.generate_keypair(&mut thread_rng()).unwrap());
+			keypairs.push(secp.generate_keypair(&mut rng()).unwrap());
 		}
 		let pks: Vec<PublicKey> = keypairs.clone().into_iter().map(|(_, p)| p).collect();
 		println!(
@@ -458,7 +458,7 @@ use crate::ffi;
 		}
 
 		let mut msg = [0u8; 32];
-		thread_rng().fill(&mut msg);
+		rng().fill(&mut msg);
 		let msg = Message::from_slice(&msg).unwrap();
 		let mut partial_sigs: Vec<AggSigPartialSignature> = vec![];
 		for i in 0..numkeys {
@@ -498,7 +498,7 @@ use crate::ffi;
 	#[test]
 	fn test_aggsig_single() {
 		let secp = Secp256k1::with_caps(ContextFlag::Full);
-		let (sk, pk) = secp.generate_keypair(&mut thread_rng()).unwrap();
+		let (sk, pk) = secp.generate_keypair(&mut rng()).unwrap();
 
 		println!(
 			"Performing aggsig single context with seckey, pubkey: {:?},{:?}",
@@ -506,7 +506,7 @@ use crate::ffi;
 		);
 
 		let mut msg = [0u8; 32];
-		thread_rng().fill(&mut msg);
+		rng().fill(&mut msg);
 		let msg = Message::from_slice(&msg).unwrap();
 		let sig = sign_single(&secp, &msg, &sk, None, None, None, None, None).unwrap();
 
@@ -519,7 +519,7 @@ use crate::ffi;
 		assert!(result == true);
 
 		let mut msg = [0u8; 32];
-		thread_rng().fill(&mut msg);
+		rng().fill(&mut msg);
 		let msg = Message::from_slice(&msg).unwrap();
 		println!(
 			"Verifying aggsig single: {:?}, msg: {:?}, pk:{:?}",
@@ -531,9 +531,9 @@ use crate::ffi;
 
 		// test optional extra key
 		let mut msg = [0u8; 32];
-		thread_rng().fill(&mut msg);
+		rng().fill(&mut msg);
 		let msg = Message::from_slice(&msg).unwrap();
-		let (sk_extra, pk_extra) = secp.generate_keypair(&mut thread_rng()).unwrap();
+		let (sk_extra, pk_extra) = secp.generate_keypair(&mut rng()).unwrap();
 		let sig = sign_single(&secp, &msg, &sk, None, Some(&sk_extra), None, None, None).unwrap();
 		let result = verify_single(&secp, &sig, &msg, None, &pk, None, Some(&pk_extra), false);
 		assert!(result == true);
@@ -548,9 +548,9 @@ use crate::ffi;
 		let mut pub_keys: Vec<PublicKey> = vec![];
 
 		for _ in 0..100 {
-			let (sk, pk) = secp.generate_keypair(&mut thread_rng()).unwrap();
+			let (sk, pk) = secp.generate_keypair(&mut rng()).unwrap();
 			let mut msg = [0u8; 32];
-			thread_rng().fill(&mut msg);
+			rng().fill(&mut msg);
 
 			let msg = Message::from_slice(&msg).unwrap();
 			let sig = sign_single(&secp, &msg, &sk, None, None, None, Some(&pk), None).unwrap();
@@ -571,7 +571,7 @@ use crate::ffi;
 	#[test]
 	fn test_aggsig_fuzz() {
 		let secp = Secp256k1::with_caps(ContextFlag::Full);
-		let (sk, pk) = secp.generate_keypair(&mut thread_rng()).unwrap();
+		let (sk, pk) = secp.generate_keypair(&mut rng()).unwrap();
 
 		println!(
 			"Performing aggsig single context with seckey, pubkey: {:?},{:?}",
@@ -579,7 +579,7 @@ use crate::ffi;
 		);
 
 		let mut msg = [0u8; 32];
-		thread_rng().fill(&mut msg);
+		rng().fill(&mut msg);
 		let msg = Message::from_slice(&msg).unwrap();
 		let sig = sign_single(&secp, &msg, &sk, None, None, None, None, None).unwrap();
 
@@ -677,7 +677,7 @@ use crate::ffi;
 		assert!(result == false);
 
 		let mut msg = [0u8; 32];
-		thread_rng().fill(&mut msg);
+		rng().fill(&mut msg);
 		let msg = Message::from_slice(&msg).unwrap();
 		if sign_single(
 			&secp,
@@ -699,8 +699,8 @@ use crate::ffi;
 		for _ in 0..20 {
 			let secp = Secp256k1::with_caps(ContextFlag::Full);
 			// Generate keys for sender, receiver
-			let (sk1, pk1) = secp.generate_keypair(&mut thread_rng()).unwrap();
-			let (sk2, pk2) = secp.generate_keypair(&mut thread_rng()).unwrap();
+			let (sk1, pk1) = secp.generate_keypair(&mut rng()).unwrap();
+			let (sk2, pk2) = secp.generate_keypair(&mut rng()).unwrap();
 
 			// Generate nonces for sender, receiver
 			let secnonce_1 = export_secnonce_single(&secp).unwrap();
@@ -716,7 +716,7 @@ use crate::ffi;
 
 			// Random message
 			let mut msg = [0u8; 32];
-			thread_rng().fill(&mut msg);
+			rng().fill(&mut msg);
 			let msg = Message::from_slice(&msg).unwrap();
 
 			// Add public keys (for storing in e)
