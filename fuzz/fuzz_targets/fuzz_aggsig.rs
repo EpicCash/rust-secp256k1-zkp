@@ -13,7 +13,7 @@ use secp256k1zkp::{
 };
 
 use secp256k1zkp::aggsig::AggSigContext;
-use secp256k1zkp::rand::{Rng, thread_rng};
+use secp256k1zkp::rand::{Rng, rng};
 
 fuzz_target!(|data: &[u8]| {
     let numkeys = 3;
@@ -21,7 +21,7 @@ fuzz_target!(|data: &[u8]| {
         return ();
     }
 
-    let mut rng = thread_rng();
+    let mut rng = rng();
     let secp = Secp256k1::with_caps(ContextFlag::Full);
     let mut pks: Vec<PublicKey> = Vec::with_capacity(numkeys);
     let mut keypairs: Vec<(SecretKey, PublicKey)> = Vec::with_capacity(numkeys);

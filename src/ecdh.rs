@@ -92,15 +92,15 @@ impl ops::Index<ops::RangeFull> for SharedSecret {
 
 #[cfg(test)]
 mod tests {
-    use rand::thread_rng;
+    use rand::rng;
     use super::SharedSecret;
     use super::super::Secp256k1;
 
     #[test]
     fn ecdh() {
         let s = Secp256k1::with_caps(crate::ContextFlag::SignOnly);
-        let (sk1, pk1) = s.generate_keypair(&mut thread_rng()).unwrap();
-        let (sk2, pk2) = s.generate_keypair(&mut thread_rng()).unwrap();
+        let (sk1, pk1) = s.generate_keypair(&mut rng()).unwrap();
+        let (sk2, pk2) = s.generate_keypair(&mut rng()).unwrap();
 
         let sec1 = SharedSecret::new(&s, &pk1, &sk2);
         let sec2 = SharedSecret::new(&s, &pk2, &sk1);
@@ -112,7 +112,7 @@ mod tests {
 
 #[cfg(all(test, feature = "unstable"))]
 mod benches {
-    use rand::thread_rng;
+    use rand::rng;
     use test::{Bencher, black_box};
 
     use super::SharedSecret;
@@ -121,7 +121,7 @@ mod benches {
     #[bench]
     pub fn bench_ecdh(bh: &mut Bencher) {
         let s = Secp256k1::with_caps(::ContextFlag::SignOnly);
-        let (sk, pk) = s.generate_keypair(&mut thread_rng()).unwrap();
+        let (sk, pk) = s.generate_keypair(&mut rng()).unwrap();
 
         let s = Secp256k1::new();
         bh.iter( || {
